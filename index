@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Project Wala — Web Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwindcss.config={theme:{extend:{fontFamily:{display:['Space Grotesk','sans-serif'],body:['DM Sans','sans-serif']}}}}
+</script>
+<style>
+:root{--bg:#080c14;--bg2:#0f1520;--card:#151d2e;--border:#1e2d44;--fg:#e4e9f2;--muted:#5e7089;--accent:#00d68f;--accent-dim:rgba(0,214,143,.1);--accent-glow:rgba(0,214,143,.2);--warn:#f0a030;--danger:#f05050;--info:#40a0f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-mesh::before{content:'';position:absolute;width:700px;height:700px;top:-250px;right:-200px;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);animation:bfloat 22s ease-in-out infinite}
+.bg-mesh::after{content:'';position:absolute;width:500px;height:500px;bottom:-200px;left:-150px;background:radial-gradient(circle,rgba(64,160,240,.08) 0%,transparent 70%);animation:bfloat 28s ease-in-out infinite reverse}
+@keyframes bfloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,-40px) scale(1.08)}66%{transform:translate(-40px,60px) scale(.94)}}
+.noise{position:fixed;inset:0;z-index:1;opacity:.025;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:200px}
+.mc{position:relative;z-index:2}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;transition:border-color .3s,box-shadow .3s}
+.card:hover{border-color:rgba(0,214,143,.25);box-shadow:0 0 30px rgba(0,214,143,.04)}
+.inp{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--fg);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;outline:none;transition:border-color .3s,box-shadow .3s}
+.inp::placeholder{color:var(--muted)}.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.sel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--fg);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%235e7089' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;cursor:pointer;transition:border-color .3s}
+.sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}.sel option{background:var(--card);color:var(--fg)}
+.btn-p{background:var(--accent);color:#080c14;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 22px;border-radius:10px;border:none;cursor:pointer;transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--accent-glow)}.btn-p:active{transform:translateY(0)}.btn-p:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-g:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.btn-g.danger:hover{border-color:var(--danger);color:var(--danger);background:rgba(240,80,80,.08)}
+.btn-i{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px;transition:all .2s;font-size:13px}
+.btn-i:hover{color:var(--danger);background:rgba(240,80,80,.1)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;max-width:520px;width:92%;max-height:90vh;overflow-y:auto;transform:scale(.92) translateY(16px);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.modal-bg.open .modal-box{transform:scale(1) translateY(0)}
+.toast-wrap{position:fixed;top:16px;right:16px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:9px;font-size:13px;pointer-events:all;animation:tIn .35s cubic-bezier(.16,1,.3,1);max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.toast.ok{border-left:3px solid var(--accent)}.toast.err{border-left:3px solid var(--danger)}.toast.inf{border-left:3px solid var(--info)}.toast.wrn{border-left:3px solid var(--warn)}
+.toast.out{animation:tOut .25s ease-in forwards}
+@keyframes tIn{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tOut{to{opacity:0;transform:translateX(80px)}}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot.on{background:var(--accent);box-shadow:0 0 7px var(--accent-glow);animation:pdot 2s ease-in-out infinite}
+.dot.off{background:var(--muted)}.dot.err{background:var(--danger)}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.35}}
+.freq{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.4px}
+.freq.f1{background:rgba(64,160,240,.1);color:var(--info)}.freq.f6{background:var(--accent-dim);color:var(--accent)}
+.freq.f24{background:rgba(240,160,48,.1);color:var(--warn)}.freq.f168{background:rgba(94,112,137,.12);color:var(--muted)}
+.tab{background:transparent;border:none;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;border-radius:9px;transition:all .2s}
+.tab:hover{color:var(--fg);background:var(--bg2)}.tab.act{color:var(--accent);background:var(--accent-dim)}
+.notif-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s;animation:fadeUp .35s ease-out}
+.notif-card:hover{border-color:rgba(0,214,143,.15)}
+.notif-card.highlight{border-left:3px solid var(--accent)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.tog{width:40px;height:22px;background:var(--border);border-radius:11px;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}
+.tog.on{background:var(--accent)}.tog-th{width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform .3s cubic-bezier(.16,1,.3,1)}.tog.on .tog-th{transform:translateX(18px)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}.empty i{font-size:44px;margin-bottom:14px;opacity:.25}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.code-block{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:18px;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;color:#b8c9e0;overflow-x:auto;white-space:pre;max-height:500px;overflow-y:auto;tab-size:2}
+.conn-bar{border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:12px;font-size:14px;margin-bottom:20px;transition:all .3s}
+.conn-bar.off{background:rgba(240,160,48,.08);border:1px solid rgba(240,160,48,.2);color:var(--warn)}
+.conn-bar.on{background:var(--accent-dim);border:1px solid rgba(0,214,143,.2);color:var(--accent)}
+.step-n{width:32px;height:32px;border-radius:9px;background:var(--accent-dim);color:var(--accent);font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@media(max-width:768px){.hero-t{font-size:1.8rem!important}.g4{grid-template-columns:1fr 1fr!important}.site-row{flex-direction:column;align-items:flex-start!important}.site-acts{width:100%;justify-content:flex-end}}
+@media(max-width:480px){.g4{grid-template-columns:1fr!important}.hdr-btns{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="noise"></div>
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- Settings Modal -->
+<div class="modal-bg" id="mSettings" role="dialog" aria-modal="true" aria-label="Settings">
+<div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+<h3 style="font-family:'Space Grotesk';font-size:18px;font-weight:700">Connect to Google Sheet</h3>
+<button class="btn-i" onclick="closeM('mSettings')" aria-label="Close"><i class="fas fa-times"></i></button>
+</div>
+<div style="background:rgba(64,160,240,.06);border:1px solid rgba(64,160,240,.15);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:var(--info);line-height:1.6">
+<i class="fas fa-info-circle" style="margin-right:6px"></i>
+First, follow the <strong>Setup Guide</strong> tab to create your Google Apps Script. Then paste the Web App URL below.
+</div>
+<div style="margin-bottom:14px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Google Apps Script Web App URL</label>
+<input type="url" class="inp" id="inScriptUrl" placeholder="https://script.google.com/macros/s/XXXXXX/exec">
+</div>
+<div style="margin-bottom:20px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Your Email (for receiving notifications)</label>
+<input type="email" class="inp" id="inEmail" placeholder="you@gmail.com">
+</div>
+<div style="display:flex;gap:10px">
+<button class="btn-p" onclick="doConnect()" id="btnConnect" style="flex:1;justify-content:center">
+<i class="fas fa-plug"></i> Connect & Initialize
+</button>
+<button class="btn-g" onclick="doDisconnect()" id="btnDisconnect" style="display:none">
+<i class="fas fa-unlink"></i> Disconnect
+</button>
+</div>
+</div>
+</div>
+
+<!-- Add Site Modal -->
+<div class="modal-bg" id="mAddSite" role="dialog" aria-modal="true" aria-label="Add website">
+<div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+<h3 style="font-family:'Space Grotesk';font-size:18px;font-weight:700">Add Website to Monitor</h3>
+<button class="btn-i" onclick="closeM('mAddSite')" aria-label="Close"><i class="fas fa-times"></i></button>
+</div>
+<form id="frmAdd" onsubmit="doAddSite(event)" novalidate>
+<div style="margin-bottom:14px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Website Name</label>
+<input type="text" class="inp" id="inName" placeholder="e.g., Mumbai University Results" required>
+</div>
+<div style="margin-bottom:14px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Website URL</label>
+<input type="url" class="inp" id="inUrl" placeholder="https://example.com/notifications" required>
+</div>
+<div style="margin-bottom:14px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Keyword to Detect (leave empty to match any change)</label>
+<input type="text" class="inp" id="inKw" placeholder="e.g., result, exam, admission, notification">
+</div>
+<div style="margin-bottom:22px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Check Frequency (for auto-check)</label>
+<select class="sel" id="inFreq">
+<option value="every-6h">Every 6 Hours</option>
+<option value="every-1h">Every Hour</option>
+<option value="daily">Once Daily</option>
+<option value="weekly">Once Weekly</option>
+</select>
+</div>
+<button type="submit" class="btn-p" style="width:100%;justify-content:center" id="btnAddSite">
+<i class="fas fa-plus"></i> Add & Start Monitoring
+</button>
+</form>
+</div>
+</div>
+
+<!-- Auto-Check Modal -->
+<div class="modal-bg" id="mAuto" role="dialog" aria-modal="true" aria-label="Auto-check settings">
+<div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+<h3 style="font-family:'Space Grotesk';font-size:18px;font-weight:700">Auto-Check Settings</h3>
+<button class="btn-i" onclick="closeM('mAuto')" aria-label="Close"><i class="fas fa-times"></i></button>
+</div>
+<div style="background:var(--accent-dim);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:var(--accent);line-height:1.6">
+<i class="fas fa-robot" style="margin-right:6px"></i>
+Auto-check runs on <strong>Google's servers</strong>. You can close this page — it keeps checking and emailing you automatically. Free tier allows 1,000+ checks/month.
+</div>
+<div id="autoStatus" style="margin-bottom:18px"></div>
+<div style="margin-bottom:22px">
+<label style="font-size:12px;color:var(--muted);margin-bottom:5px;display:block">Check Interval</label>
+<select class="sel" id="inAutoFreq">
+<option value="5">Every 5 minutes</option>
+<option value="15">Every 15 minutes</option>
+<option value="30">Every 30 minutes</option>
+<option value="60" selected>Every 1 hour</option>
+<option value="360">Every 6 hours</option>
+<option value="720">Every 12 hours</option>
+<option value="1440">Every 24 hours</option>
+</select>
+</div>
+<div style="display:flex;gap:10px">
+<button class="btn-p" onclick="doStartAuto()" id="btnStartAuto" style="flex:1;justify-content:center">
+<i class="fas fa-play"></i> Start Auto-Check
+</button>
+<button class="btn-g danger" onclick="doStopAuto()" id="btnStopAuto" style="display:none;flex:1;justify-content:center">
+<i class="fas fa-stop"></i> Stop Auto-Check
+</button>
+</div>
+</div>
+</div>
+
+<!-- MAIN -->
+<div class="mc">
+<header style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;gap:12px;flex-wrap:wrap">
+<a href="https://www.theprojectwala.com" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--fg)">
+<div style="width:34px;height:34px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center">
+<i class="fas fa-bell" style="color:#080c14;font-size:14px"></i>
+</div>
+<span style="font-family:'Space Grotesk';font-weight:800;font-size:17px">The Project Wala</span>
+</a>
+<div class="hdr-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<button class="btn-g" onclick="openM('mSettings')" aria-label="Settings"><i class="fas fa-cog"></i> Settings</button>
+<button class="btn-g" onclick="openM('mAuto')"><i class="fas fa-clock"></i> Auto-Check</button>
+<button class="btn-g" onclick="doCheckAll()" id="btnCheckAll"><i class="fas fa-rotate"></i> Check All</button>
+<button class="btn-p" onclick="openM('mAddSite')" style="padding:9px 18px;font-size:13px"><i class="fas fa-plus"></i> Add Site</button>
+</div>
+</header>
+
+<section style="text-align:center;padding:30px 20px 36px;max-width:660px;margin:0 auto">
+<h1 class="hero-t" style="font-family:'Space Grotesk';font-size:2.6rem;font-weight:800;line-height:1.08;margin-bottom:14px">
+Never Miss an<br><span style="color:var(--accent)">Exam Update</span> Again
+</h1>
+<p style="color:var(--muted);font-size:15px;line-height:1.65;max-width:480px;margin:0 auto">
+Powered by Google Sheets. Add any website — get <strong style="color:var(--fg)">real email notifications</strong> the moment something changes.
+</p>
+</section>
+
+<!-- Connection Banner -->
+<section style="max-width:1160px;margin:0 auto 20px;padding:0 20px" id="connWrap"></section>
+
+<!-- Stats -->
+<section style="max-width:1160px;margin:0 auto 22px;padding:0 20px">
+<div class="g4" id="statsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"></div>
+</section>
+
+<!-- Tabs -->
+<section style="max-width:1160px;margin:0 auto;padding:0 20px">
+<div style="display:flex;align-items:center;gap:4px;margin-bottom:18px;background:var(--bg2);padding:3px;border-radius:10px;width:fit-content" id="tabWrap">
+<button class="tab act" data-t="sites" onclick="swTab('sites',this)"><i class="fas fa-globe" style="margin-right:5px"></i>Tracked Sites</button>
+<button class="tab" data-t="notifs" onclick="swTab('notifs',this)"><i class="fas fa-inbox" style="margin-right:5px"></i>Notifications</button>
+<button class="tab" data-t="guide" onclick="swTab('guide',this)"><i class="fas fa-book" style="margin-right:5px"></i>Setup Guide</button>
+</div>
+</section>
+
+<!-- Tab: Sites -->
+<section id="t-sites" style="max-width:1160px;margin:0 auto;padding:0 20px 50px"><div id="sitesList"></div></section>
+<!-- Tab: Notifications -->
+<section id="t-notifs" style="max-width:1160px;margin:0 auto;padding:0 20px 50px;display:none"><div id="notifList"></div></section>
+<!-- Tab: Guide -->
+<section id="t-guide" style="max-width:860px;margin:0 auto;padding:0 20px 50px;display:none"><div id="guideContent"></div></section>
+
+<!-- Footer -->
+<footer style="text-align:center;padding:28px 20px;border-top:1px solid var(--border)">
+<p style="font-size:13px;color:var(--muted)">&copy; 2025 <a href="https://www.theprojectwala.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">The Project Wala</a> — www.theprojectwala.com</p>
+</footer>
+</div>
+
+<script>
+/* ===== GOOGLE APPS SCRIPT CODE (for user to copy) ===== */
+const SCODE = `// ============================================
+// The Project Wala — Web Monitor Backend
+// Paste this ENTIRE code in Google Apps Script
+// ============================================
+
+var PROP_EMAIL = 'USER_EMAIL';
+
+function doGet(e) {
+  try {
+    return handleReq(e.parameter);
+  } catch(err) {
+    return json({ success: false, error: err.toString() });
+  }
+}
+
+function handleReq(p) {
+  var action = p.action || '';
+  var sheet = getSheet();
+
+  switch(action) {
+    case 'init':
+      if (p.email) {
+        PropertiesService.getScriptProperties().setProperty(PROP_EMAIL, p.email);
+      }
+      return json({
+        success: true,
+        email: PropertiesService.getScriptProperties().getProperty(PROP_EMAIL) || '',
+        sheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl()
+      });
+
+    case 'getData':
+      return json({
+        success: true,
+        sites: getSites(sheet),
+        notifications: getNotifs(),
+        email: PropertiesService.getScriptProperties().getProperty(PROP_EMAIL) || ''
+      });
+
+    case 'addSite':
+      var id = Utilities.getUuid();
+      sheet.appendRow([
+        id, p.name, p.url, p.keyword || '',
+        p.frequency || 'every-6h', 'TRUE', '', '', 0,
+        new Date().toISOString()
+      ]);
+      return json({ success: true, id: id });
+
+    case 'removeSite':
+      removeRow(sheet, p.id);
+      return json({ success: true });
+
+    case 'toggleSite':
+      toggleRow(sheet, p.id);
+      return json({ success: true });
+
+    case 'checkSite':
+      return json(checkOne(sheet, p.id));
+
+    case 'checkAll':
+      var results = [];
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][5] === true || data[i][5] === 'TRUE') {
+          results.push(checkOne(sheet, data[i][0]));
+        }
+      }
+      return json({ success: true, results: results });
+
+    case 'setAutoCheck':
+      clearTriggers();
+      var mins = parseInt(p.minutes) || 60;
+      if (mins >= 1) {
+        ScriptApp.newTrigger('autoCheckAll')
+          .timeBased().everyMinutes(mins).create();
+      }
+      return json({ success: true, minutes: mins });
+
+    case 'stopAutoCheck':
+      clearTriggers();
+      return json({ success: true });
+
+    case 'getTriggerStatus':
+      var triggers = ScriptApp.getProjectTriggers();
+      return json({
+        success: true,
+        active: triggers.length > 0,
+        handler: triggers.length > 0 ? triggers[0].getHandlerFunction() : ''
+      });
+
+    case 'clearNotifs':
+      var ns = getNotifSheet();
+      ns.clear();
+      ns.appendRow(['ID','SiteID','SiteName','SiteURL','Message','Type','Time','SentEmail']);
+      return json({ success: true });
+
+    default:
+      return json({ success: false, error: 'Unknown action: ' + action });
+  }
+}
+
+// --- Sheet helpers ---
+
+function getSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var s = ss.getSheetByName('Sites');
+  if (!s) {
+    s = ss.insertSheet('Sites');
+    s.appendRow(['ID','Name','URL','Keyword','Frequency','Active','LastHash','LastChecked','ChangesFound','AddedAt']);
+    s.getRange(1,1,1,10).setFontWeight('bold').setBackground('#e8f5e9');
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
+function getNotifSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var s = ss.getSheetByName('Notifications');
+  if (!s) {
+    s = ss.insertSheet('Notifications');
+    s.appendRow(['ID','SiteID','SiteName','SiteURL','Message','Type','Time','SentEmail']);
+    s.getRange(1,1,1,8).setFontWeight('bold').setBackground('#e3f2fd');
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
+function getSites(sheet) {
+  var data = sheet.getDataRange().getValues();
+  var sites = [];
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    sites.push({
+      id: data[i][0], name: data[i][1], url: data[i][2],
+      keyword: data[i][3], frequency: data[i][4],
+      active: data[i][5] === true || data[i][5] === 'TRUE',
+      lastHash: data[i][6] || '', lastChecked: data[i][7] || '',
+      changesFound: parseInt(data[i][8]) || 0, addedAt: data[i][9] || ''
+    });
+  }
+  return sites;
+}
+
+function getNotifs() {
+  var ns = getNotifSheet();
+  var data = ns.getDataRange().getValues();
+  var arr = [];
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    arr.push({
+      id: data[i][0], siteId: data[i][1], siteName: data[i][2],
+      siteUrl: data[i][3], message: data[i][4], type: data[i][5],
+      time: data[i][6], sentEmail: data[i][7] === true || data[i][7] === 'TRUE'
+    });
+  }
+  arr.reverse();
+  return arr.slice(0, 60);
+}
+
+function findRow(sheet, id) {
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === id) return i + 1;
+  }
+  return -1;
+}
+
+function removeRow(sheet, id) {
+  var r = findRow(sheet, id);
+  if (r > 0) sheet.deleteRow(r);
+}
+
+function toggleRow(sheet, id) {
+  var r = findRow(sheet, id);
+  if (r > 0) {
+    var val = sheet.getRange(r, 6).getValue();
+    sheet.getRange(r, 6).setValue(!(val === true || val === 'TRUE'));
+  }
+}
+
+// --- Core checking ---
+
+function checkOne(sheet, siteId) {
+  var data = sheet.getDataRange().getValues();
+  var row = -1, sd = null;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === siteId) { row = i + 1; sd = data[i]; break; }
+  }
+  if (!sd) return { success: false, error: 'Site not found' };
+
+  var url = sd[2], kw = sd[3], name = sd[1], lastH = sd[6] || '';
+  var res = { success: true, siteId: siteId, siteName: name, url: url, changed: false, keywordFound: false };
+
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true, followRedirects: true, timeout: 30000
+    });
+    var code = response.getResponseCode();
+    var raw = response.getContentText();
+    var cleaned = cleanContent(raw);
+    var hash = computeHash(cleaned);
+    var kwFound = !kw || cleaned.toLowerCase().indexOf(kw.toLowerCase()) !== -1;
+
+    res.statusCode = code;
+    res.keywordFound = kwFound;
+    var now = new Date().toISOString();
+    sheet.getRange(row, 8).setValue(now);
+
+    if (lastH && hash !== lastH) {
+      res.changed = true;
+      var changes = (parseInt(sd[8]) || 0) + 1;
+      sheet.getRange(row, 9).setValue(changes);
+
+      var msg = kwFound
+        ? 'Change detected! Keyword "' + kw + '" found in updated content.'
+        : 'Page changed but keyword "' + kw + '" not found.';
+      var snippet = extractSnippet(cleaned, kw);
+      if (snippet) msg += '\\n\\nSnippet: ' + snippet;
+
+      logNotif(siteId, name, url, msg, kwFound ? 'change' : 'info', now, false);
+      res.message = msg;
+
+      if (kwFound) {
+        var email = PropertiesService.getScriptProperties().getProperty(PROP_EMAIL);
+        if (email) {
+          try {
+            GmailApp.sendEmail(email,
+              '[The Project Wala] Update: ' + name,
+              'Change detected on: ' + name + '\\nURL: ' + url +
+              '\\nKeyword: ' + kw + '\\nTime: ' + now +
+              (snippet ? '\\n\\nSnippet:\\n' + snippet : '') +
+              '\\n\\n---\\nwww.theprojectwala.com'
+            );
+            markNotifSent(siteId, now);
+            res.emailSent = true;
+          } catch(e) { res.emailError = e.toString(); }
+        }
+      }
+    } else if (!lastH) {
+      res.firstCheck = true;
+      res.message = 'Baseline recorded. Future checks will detect changes.';
+      logNotif(siteId, name, url, 'Baseline recorded for monitoring.', 'info', now, false);
+    } else {
+      res.message = 'No changes detected.';
+    }
+    sheet.getRange(row, 7).setValue(hash);
+  } catch(e) {
+    res.success = false;
+    res.error = e.toString();
+    logNotif(siteId, name, url, 'Error: ' + e.toString(), 'error', new Date().toISOString(), false);
+  }
+  return res;
+}
+
+// --- Auto-check (runs on Google servers) ---
+
+function autoCheckAll() {
+  var sheet = getSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && (data[i][5] === true || data[i][5] === 'TRUE')) {
+      checkOne(sheet, data[i][0]);
+    }
+  }
+}
+
+function clearTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+}
+
+// --- Content helpers ---
+
+function cleanContent(html) {
+  var c = html;
+  c = c.replace(/<script[\\s\\S]*?<\\/script>/gi, '');
+  c = c.replace(/<style[\\s\\S]*?<\\/style>/gi, '');
+  c = c.replace(/<!--[\\s\\S]*?-->/g, '');
+  c = c.replace(/csrf[_\\w]*["']*\\s*[:=]\\s*["'][^"']*["']/gi, '');
+  c = c.replace(/_token["']*\\s*[:=]\\s*["'][^"']*["']/gi, '');
+  c = c.replace(/\\b\\d{10,13}\\b/g, ''); // timestamps
+  c = c.replace(/\\s+/g, ' ');
+  return c.trim();
+}
+
+function computeHash(str) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str);
+  return bytes.map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+}
+
+function extractSnippet(content, keyword) {
+  if (!keyword) return '';
+  var idx = content.toLowerCase().indexOf(keyword.toLowerCase());
+  if (idx === -1) return '';
+  var start = Math.max(0, idx - 120);
+  var end = Math.min(content.length, idx + keyword.length + 120);
+  var s = content.substring(start, end).trim();
+  if (start > 0) s = '...' + s;
+  if (end < content.length) s += '...';
+  return s;
+}
+
+// --- Notification logging ---
+
+function logNotif(siteId, siteName, siteUrl, message, type, time, sent) {
+  var ns = getNotifSheet();
+  ns.appendRow([Utilities.getUuid(), siteId, siteName, siteUrl, message, type, time, sent]);
+}
+
+function markNotifSent(siteId, time) {
+  var ns = getNotifSheet();
+  var data = ns.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === siteId && String(data[i][6]).indexOf(time.substring(0, 16)) !== -1) {
+      ns.getRange(i + 1, 8).setValue(true);
+      break;
+    }
+  }
+}
+
+// --- Utility ---
+
+function json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+/* ===== STATE ===== */
+const S = {
+  scriptUrl: localStorage.getItem('pw_url') || '',
+  email: localStorage.getItem('pw_email') || '',
+  connected: false,
+  sites: [],
+  notifications: [],
+  triggerActive: false,
+  loading: {}
+};
+
+/* ===== TOAST ===== */
+function toast(msg, type='ok') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  const icons = { ok:'fa-check-circle', err:'fa-exclamation-circle', inf:'fa-info-circle', wrn:'fa-exclamation-triangle' };
+  const colors = { ok:'var(--accent)', err:'var(--danger)', inf:'var(--info)', wrn:'var(--warn)' };
+  t.className = 'toast ' + type;
+  t.innerHTML = `<i class="fas ${icons[type]}" style="color:${colors[type]};font-size:15px;flex-shrink:0"></i><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 250); }, 4000);
+}
+
+/* ===== MODAL ===== */
+function openM(id) { document.getElementById(id).classList.add('open'); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open')); });
+
+/* ===== API LAYER ===== */
+async function api(action, params = {}) {
+  if (!S.scriptUrl) throw new Error('Not connected. Open Settings first.');
+  const u = new URL(S.scriptUrl);
+  u.searchParams.set('action', action);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) u.searchParams.set(k, String(v));
+  }
+  const resp = await fetch(u.toString(), { redirect: 'follow' });
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Invalid response. Check your Web App URL.'); }
+}
+
+/* ===== CONNECT / DISCONNECT ===== */
+async function doConnect() {
+  const url = document.getElementById('inScriptUrl').value.trim();
+  const email = document.getElementById('inEmail').value.trim();
+  if (!url) { toast('Enter your Web App URL', 'err'); return; }
+  if (!email || !email.includes('@')) { toast('Enter a valid email', 'err'); return; }
+  const btn = document.getElementById('btnConnect');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner spin"></i> Connecting...';
+  try {
+    S.scriptUrl = url;
+    S.email = email;
+    const res = await api('init', { email });
+    if (res.success) {
+      localStorage.setItem('pw_url', url);
+      localStorage.setItem('pw_email', email);
+      S.connected = true;
+      toast('Connected to Google Sheet!');
+      closeM('mSettings');
+      await fetchAll();
+    } else {
+      throw new Error(res.error || 'Connection failed');
+    }
+  } catch(e) {
+    S.connected = false;
+    toast(e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-plug"></i> Connect & Initialize';
+  render();
+}
+
+function doDisconnect() {
+  S.scriptUrl = ''; S.email = ''; S.connected = false;
+  S.sites = []; S.notifications = [];
+  localStorage.removeItem('pw_url'); localStorage.removeItem('pw_email');
+  closeM('mSettings');
+  toast('Disconnected', 'inf');
+  render();
+}
+
+/* ===== FETCH ALL DATA ===== */
+async function fetchAll() {
+  try {
+    const res = await api('getData');
+    if (res.success) {
+      S.sites = res.sites || [];
+      S.notifications = res.notifications || [];
+      if (res.email) { S.email = res.email; localStorage.setItem('pw_email', res.email); }
+      S.connected = true;
+    }
+  } catch(e) {
+    if (S.connected) toast('Lost connection: ' + e.message, 'wrn');
+    S.connected = false;
+  }
+  render();
+}
+
+/* ===== ADD SITE ===== */
+async function doAddSite(e) {
+  e.preventDefault();
+  const name = document.getElementById('inName').value.trim();
+  let url = document.getElementById('inUrl').value.trim();
+  const kw = document.getElementById('inKw').value.trim();
+  const freq = document.getElementById('inFreq').value;
+  if (!name) { toast('Enter website name', 'err'); return; }
+  if (!url) { toast('Enter URL', 'err'); return; }
+  if (!url.startsWith('http')) url = 'https://' + url;
+  const btn = document.getElementById('btnAddSite');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner spin"></i> Adding...';
+  try {
+    const res = await api('addSite', { name, url, keyword: kw, frequency: freq });
+    if (res.success) { toast('Added: ' + name); closeM('mAddSite'); document.getElementById('frmAdd').reset(); await fetchAll(); }
+    else throw new Error(res.error);
+  } catch(e) { toast(e.message, 'err'); }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus"></i> Add & Start Monitoring';
+}
+
+/* ===== REMOVE SITE ===== */
+async function doRemoveSite(id) {
+  const site = S.sites.find(s => s.id === id);
+  try {
+    await api('removeSite', { id });
+    toast('Removed: ' + (site ? site.name : 'site'), 'inf');
+    await fetchAll();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+/* ===== TOGGLE SITE ===== */
+async function doToggleSite(id) {
+  try {
+    await api('toggleSite', { id });
+    await fetchAll();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+/* ===== CHECK SINGLE SITE ===== */
+async function doCheckSite(id) {
+  S.loading[id] = true; renderSites();
+  try {
+    const res = await api('checkSite', { id });
+    if (res.changed) toast('Change detected on ' + res.siteName + '!', 'ok');
+    else if (res.firstCheck) toast('Baseline recorded for ' + res.siteName, 'inf');
+    else if (res.success) toast('No changes on ' + res.siteName, 'inf');
+    else toast('Error: ' + (res.error || 'Unknown'), 'err');
+    if (res.emailSent) toast('Email sent to ' + S.email, 'ok');
+    await fetchAll();
+  } catch(e) { toast(e.message, 'err'); }
+  S.loading[id] = false; renderSites();
+}
+
+/* ===== CHECK ALL ===== */
+async function doCheckAll() {
+  if (!S.connected) { toast('Connect to Google Sheet first', 'wrn'); return; }
+  const btn = document.getElementById('btnCheckAll');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner spin"></i> Checking...';
+  try {
+    const res = await api('checkAll');
+    if (res.success) {
+      let changes = 0, errors = 0;
+      (res.results || []).forEach(r => { if (r.changed) changes++; if (!r.success) errors++; });
+      if (changes > 0) toast(changes + ' change(s) detected!', 'ok');
+      else toast('All sites checked — no changes', 'inf');
+      if (errors > 0) toast(errors + ' site(s) had errors', 'wrn');
+      await fetchAll();
+    }
+  } catch(e) { toast(e.message, 'err'); }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate"></i> Check All';
+}
+
+/* ===== AUTO-CHECK ===== */
+async function doStartAuto() {
+  const mins = document.getElementById('inAutoFreq').value;
+  try {
+    await api('setAutoCheck', { minutes: mins });
+    S.triggerActive = true;
+    toast('Auto-check started! Runs every ' + mins + ' minutes on Google servers.', 'ok');
+    closeM('mAuto');
+    renderAutoStatus();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function doStopAuto() {
+  try {
+    await api('stopAutoCheck');
+    S.triggerActive = false;
+    toast('Auto-check stopped', 'inf');
+    closeM('mAuto');
+    renderAutoStatus();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function fetchTriggerStatus() {
+  try {
+    const res = await api('getTriggerStatus');
+    S.triggerActive = res.active || false;
+    renderAutoStatus();
+  } catch(e) { /* silent */ }
+}
+
+function renderAutoStatus() {
+  const el = document.getElementById('autoStatus');
+  if (S.triggerActive) {
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-size:14px;font-weight:600"><span class="dot on"></span> Auto-Check is ACTIVE — running on Google servers</div>';
+    document.getElementById('btnStartAuto').style.display = 'none';
+    document.getElementById('btnStopAuto').style.display = 'flex';
+  } else {
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px"><span class="dot off"></span> Auto-Check is OFF</div>';
+    document.getElementById('btnStartAuto').style.display = 'flex';
+    document.getElementById('btnStopAuto').style.display = 'none';
+  }
+}
+
+/* ===== CLEAR NOTIFICATIONS ===== */
+async function doClearNotifs() {
+  try { await api('clearNotifs'); S.notifications = []; render(); toast('Notifications cleared', 'inf'); }
+  catch(e) { toast(e.message, 'err'); }
+}
+
+/* ===== TABS ===== */
+function swTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('act'));
+  btn.classList.add('act');
+  ['sites','notifs','guide'].forEach(t => { document.getElementById('t-' + t).style.display = t === name ? 'block' : 'none'; });
+}
+
+/* ===== RENDER: CONNECTION BANNER ===== */
+function renderConn() {
+  const el = document.getElementById('connWrap');
+  if (S.connected) {
+    el.innerHTML = `<div class="conn-bar on"><i class="fas fa-link"></i><span>Connected to Google Sheet</span><a href="${S.scriptUrl}" target="_blank" rel="noopener" style="color:var(--accent);font-size:12px;text-decoration:none;margin-left:auto"><i class="fas fa-external-link-alt"></i> Open Sheet</a></div>`;
+  } else {
+    el.innerHTML = `<div class="conn-bar off"><i class="fas fa-exclamation-triangle"></i><span>Not connected — <a href="#" onclick="event.preventDefault();openM('mSettings')" style="color:var(--warn);text-decoration:none;font-weight:600;text-decoration:underline">Open Settings</a> to connect your Google Sheet</span></div>`;
+  }
+}
+
+/* ===== RENDER: STATS ===== */
+function renderStats() {
+  const active = S.sites.filter(s => s.active).length;
+  const changes = S.sites.reduce((s, x) => s + x.changesFound, 0);
+  const items = [
+    { l:'Tracked Sites', v:S.sites.length, i:'fa-globe', c:'var(--accent)' },
+    { l:'Active', v:active, i:'fa-signal', c:'var(--info)' },
+    { l:'Changes Found', v:changes, i:'fa-bolt', c:'var(--warn)' },
+    { l:'Notifications', v:S.notifications.length, i:'fa-bell', c:'var(--danger)' }
+  ];
+  document.getElementById('statsGrid').innerHTML = items.map(s => `
+    <div class="card" style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;border-radius:10px;background:${s.c}12;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas ${s.i}" style="color:${s.c};font-size:14px"></i>
+      </div>
+      <div><div style="font-family:'Space Grotesk';font-size:24px;font-weight:800;line-height:1">${s.v}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* ===== RENDER: SITES ===== */
+function renderSites() {
+  const el = document.getElementById('sitesList');
+  if (!S.connected) {
+    el.innerHTML = `<div class="empty"><i class="fas fa-plug"></i><h3 style="font-family:'Space Grotesk';font-size:17px;font-weight:700;margin-bottom:8px">Connect to Get Started</h3>
+    <p style="font-size:14px;max-width:340px;margin:0 auto 18px;line-height:1.6">Open <strong>Settings</strong> to connect your Google Sheet, then add websites to monitor.</p>
+    <button class="btn-p" onclick="openM('mSettings')" style="font-size:13px;padding:10px 20px"><i class="fas fa-cog"></i> Open Settings</button></div>`;
+    return;
+  }
+  if (S.sites.length === 0) {
+    el.innerHTML = `<div class="empty"><i class="fas fa-satellite-dish"></i><h3 style="font-family:'Space Grotesk';font-size:17px;font-weight:700;margin-bottom:8px">No Websites Yet</h3>
+    <p style="font-size:14px;max-width:340px;margin:0 auto 18px;line-height:1.6">Add a university portal, exam board, or any website you want to track.</p>
+    <button class="btn-p" onclick="openM('mAddSite')" style="font-size:13px;padding:10px 20px"><i class="fas fa-plus"></i> Add First Site</button></div>`;
+    return;
+  }
+  const freqCls = { 'every-1h':'f1', 'every-6h':'f6', 'daily':'f24', 'weekly':'f168' };
+  const freqLbl = { 'every-1h':'1H', 'every-6h':'6H', 'daily':'24H', 'weekly':'1W' };
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px">' + S.sites.map(site => {
+    const domain = (() => { try { return new URL(site.url).hostname; } catch { return site.url; } })();
+    const loading = S.loading[site.id];
+    const last = site.lastChecked ? timeAgo(new Date(site.lastChecked)) : 'Never';
+    return `
+    <div class="card" style="padding:16px 18px">
+      <div class="site-row" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:180px">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border);overflow:hidden">
+            <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=32" alt="" style="width:20px;height:20px;border-radius:3px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <i class="fas fa-globe" style="color:var(--muted);font-size:16px;display:none"></i>
+          </div>
+          <div style="min-width:0">
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${esc(site.name)} <span class="dot ${site.active?'on':'off'}"></span>
+            </div>
+            <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domain)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="freq ${freqCls[site.frequency]||'f6'}">${freqLbl[site.frequency]||'6H'}</span>
+          ${site.keyword ? `<span style="font-size:11px;color:var(--fg-muted);background:var(--bg2);padding:3px 8px;border-radius:5px;border:1px solid var(--border)"><i class="fas fa-search" style="margin-right:3px;font-size:9px"></i>${esc(site.keyword)}</span>` : ''}
+          ${site.changesFound > 0 ? `<span style="font-size:11px;color:var(--warn);background:rgba(240,160,48,.08);padding:3px 8px;border-radius:5px"><i class="fas fa-bolt" style="margin-right:3px;font-size:9px"></i>${site.changesFound}</span>` : ''}
+        </div>
+        <div class="site-acts" style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--muted)" title="${site.lastChecked||'Not checked'}"><i class="fas fa-clock" style="margin-right:2px"></i>${last}</span>
+          <div class="tog ${site.active?'on':''}" onclick="doToggleSite('${site.id}')" role="switch" aria-checked="${site.active}" tabindex="0"><div class="tog-th"></div></div>
+          <button class="btn-g" onclick="doCheckSite('${site.id}')" ${loading?'disabled':''} style="font-size:11px;padding:6px 10px">
+            ${loading ? '<i class="fas fa-spinner spin"></i>' : '<i class="fas fa-rotate"></i> Check'}
+          </button>
+          <button class="btn-i" onclick="doRemoveSite('${site.id}')" aria-label="Remove"><i class="fas fa-trash-can"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+/* ===== RENDER: NOTIFICATIONS ===== */
+function renderNotifs() {
+  const el = document.getElementById('notifList');
+  if (S.notifications.length === 0) {
+    el.innerHTML = `<div class="empty"><i class="fas fa-inbox"></i><h3 style="font-family:'Space Grotesk';font-size:17px;font-weight:700;margin-bottom:8px">No Notifications</h3>
+    <p style="font-size:14px;max-width:340px;margin:0 auto;line-height:1.6">Check a website to see results here. Changes will also be emailed to you.</p></div>`;
+    return;
+  }
+  const icons = { change:{ i:'fa-bolt', c:'var(--warn)', bg:'rgba(240,160,48,.1)' }, info:{ i:'fa-info-circle', c:'var(--info)', bg:'rgba(64,160,240,.1)' }, error:{ i:'fa-exclamation-triangle', c:'var(--danger)', bg:'rgba(240,80,80,.1)' } };
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px">' + S.notifications.map(n => {
+    const st = icons[n.type] || icons.info;
+    const hl = n.type === 'change' ? 'highlight' : '';
+    return `
+    <div class="notif-card ${hl}">
+      <div style="display:flex;align-items:flex-start;gap:11px">
+        <div style="width:32px;height:32px;border-radius:8px;background:${st.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas ${st.i}" style="color:${st.c};font-size:13px"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap">
+            <span style="font-family:'Space Grotesk';font-weight:700;font-size:13px">${esc(n.siteName)}</span>
+            ${n.sentEmail ? '<span style="font-size:10px;color:var(--accent);background:var(--accent-dim);padding:1px 6px;border-radius:4px;font-weight:700"><i class="fas fa-envelope" style="margin-right:2px"></i>EMAILED</span>' : ''}
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:5px;white-space:pre-line">${esc(n.message)}</p>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:10px;color:var(--muted)"><i class="fas fa-clock" style="margin-right:2px"></i>${n.time ? timeAgo(new Date(n.time)) : ''}</span>
+            <a href="${esc(n.siteUrl)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:2px"></i>Visit</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + '</div>' +
+  `<div style="text-align:center;margin-top:16px"><button class="btn-g danger" onclick="doClearNotifs()"><i class="fas fa-trash-can"></i> Clear All</button></div>`;
+}
+
+/* ===== RENDER: SETUP GUIDE ===== */
+function renderGuide() {
+  document.getElementById('guideContent').innerHTML = `
+  <div class="card" style="padding:24px;margin-bottom:18px">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(240,160,48,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas fa-lightbulb" style="color:var(--warn);font-size:18px"></i>
+      </div>
+      <div>
+        <h3 style="font-family:'Space Grotesk';font-size:17px;font-weight:700;margin-bottom:6px">How This Works (Real, No Jokes)</h3>
+        <p style="color:var(--muted);font-size:14px;line-height:1.65">
+          This page connects to <strong style="color:var(--fg)">your Google Sheet</strong> via a Google Apps Script. The script fetches websites, detects changes using SHA-256 hashing, and sends you <strong style="color:var(--fg)">real Gmail notifications</strong>. Auto-check runs on Google's servers — you don't need to keep this page open.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:22px">
+
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="step-n">1</div>
+        <div style="flex:1">
+          <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:15px;margin-bottom:6px">Create a Google Sheet</h4>
+          <p style="color:var(--muted);font-size:13px;line-height:1.6">Go to <a href="https://sheets.new" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">sheets.new</a> and create a new blank spreadsheet. Name it anything you like — "Web Monitor" works fine.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="step-n">2</div>
+        <div style="flex:1">
+          <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:15px;margin-bottom:6px">Open Apps Script</h4>
+          <p style="color:var(--muted);font-size:13px;line-height:1.6">In your sheet, click <strong style="color:var(--fg)">Extensions → Apps Script</strong>. This opens the script editor. Delete everything there.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="step-n">3</div>
+        <div style="flex:1">
+          <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:15px;margin-bottom:6px">Paste the Code Below</h4>
+          <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:12px">Copy the entire code and paste it into the Apps Script editor. Then click the <strong style="color:var(--fg)">Save</strong> button (floppy disk icon).</p>
+          <div style="display:flex;gap:8px">
+            <button class="btn-p" onclick="copyCode()" id="btnCopy" style="font-size:13px;padding:9px 18px">
+              <i class="fas fa-copy"></i> Copy Full Code
+            </button>
+            <button class="btn-g" onclick="downloadCode()" style="font-size:13px">
+              <i class="fas fa-download"></i> Download .gs File
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="step-n">4</div>
+        <div style="flex:1">
+          <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:15px;margin-bottom:6px">Deploy as Web App</h4>
+          <p style="color:var(--muted);font-size:13px;line-height:1.65">
+            Click <strong style="color:var(--fg)">Deploy → New deployment</strong>.<br>
+            Click the gear icon next to "Select type" → choose <strong style="color:var(--fg)">Web app</strong>.<br>
+            Set: <strong style="color:var(--fg)">Execute as: Me</strong> | <strong style="color:var(--fg)">Who has access: Anyone</strong>.<br>
+            Click <strong style="color:var(--fg)">Deploy</strong>. You'll see a "Authorization required" popup.<br>
+            Click your email → <strong style="color:var(--fg)">Advanced</strong> → <strong style="color:var(--fg)">Go to [project name] (unsafe)</strong> → <strong style="color:var(--fg)">Allow</strong>.<br>
+            <strong style="color:var(--accent)">Copy the Web App URL</strong> that appears.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="step-n">5</div>
+        <div style="flex:1">
+          <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:15px;margin-bottom:6px">Connect Here</h4>
+          <p style="color:var(--muted);font-size:13px;line-height:1.6">Click the <strong style="color:var(--fg)">Settings</strong> button above. Paste the Web App URL and your email. Click <strong style="color:var(--accent)">Connect & Initialize</strong>. Done! You're live.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+    <h3 style="font-family:'Space Grotesk';font-weight:700;font-size:16px">Full Apps Script Code</h3>
+    <button class="btn-g" onclick="copyCode()" style="font-size:12px"><i class="fas fa-copy"></i> Copy</button>
+  </div>
+  <div class="code-block" id="codeBlock"></div>
+
+  <div class="card" style="padding:20px;margin-top:18px;border-color:rgba(64,160,240,.2)">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div style="width:32px;height:32px;border-radius:8px;background:rgba(64,160,240,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas fa-circle-info" style="color:var(--info);font-size:14px"></i>
+      </div>
+      <div>
+        <h4 style="font-family:'Space Grotesk';font-weight:700;font-size:14px;margin-bottom:4px;color:var(--info)">Important Notes</h4>
+        <ul style="color:var(--muted);font-size:13px;line-height:1.8;padding-left:16px">
+          <li>First check on any site records a <strong style="color:var(--fg)">baseline</strong> — no email sent. Changes are detected from the second check onward.</li>
+          <li>Some websites block non-browser requests (most university/exam sites work fine).</li>
+          <li>Auto-check uses Google Time Triggers — free tier supports 1,000+ checks/month.</li>
+          <li>If you modify the script, you must <strong style="color:var(--fg)">redeploy</strong> (create new deployment) for changes to take effect.</li>
+          <li>Your data lives in <strong style="color:var(--fg)">your</strong> Google Sheet. Nothing goes to third parties.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:22px;padding:18px;border-top:1px solid var(--border)">
+    <p style="font-size:13px;color:var(--muted)">Built by <a href="https://www.theprojectwala.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">The Project Wala</a> — www.theprojectwala.com</p>
+  </div>`;
+  document.getElementById('codeBlock').textContent = SCODE;
+}
+
+/* ===== COPY / DOWNLOAD CODE ===== */
+function copyCode() {
+  navigator.clipboard.writeText(SCODE).then(() => {
+    const btn = document.getElementById('btnCopy');
+    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> Copy Full Code'; }, 2000);
+    toast('Code copied to clipboard!');
+  }).catch(() => {
+    /* Fallback */
+    const ta = document.createElement('textarea');
+    ta.value = SCODE; ta.style.cssText = 'position:fixed;top:-9999px';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('Code copied!');
+  });
+}
+
+function downloadCode() {
+  const blob = new Blob([SCODE], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TheProjectWala_WebMonitor.gs';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('File downloaded!');
+}
+
+/* ===== HELPERS ===== */
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function timeAgo(d) {
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 10) return 'Just now';
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const days = Math.floor(h / 24);
+  if (days < 30) return days + 'd ago';
+  return d.toLocaleDateString();
+}
+
+/* ===== RENDER ALL ===== */
+function render() {
+  renderConn();
+  renderStats();
+  renderSites();
+  renderNotifs();
+  renderAutoStatus();
+  /* Populate settings fields */
+  document.getElementById('inScriptUrl').value = S.scriptUrl;
+  document.getElementById('inEmail').value = S.email;
+  if (S.connected) {
+    document.getElementById('btnConnect').style.display = 'none';
+    document.getElementById('btnDisconnect').style.display = 'inline-flex';
+  } else {
+    document.getElementById('btnConnect').style.display = 'inline-flex';
+    document.getElementById('btnDisconnect').style.display = 'none';
+  }
+}
+
+/* ===== KEYBOARD: toggle switch ===== */
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('tog')) { e.preventDefault(); e.target.click(); }
+});
+
+/* ===== INIT ===== */
+renderGuide();
+if (S.scriptUrl) {
+  fetchAll().then(() => { if (S.connected) fetchTriggerStatus(); });
+} else {
+  render();
+}
+</script>
+</body>
+</html>
